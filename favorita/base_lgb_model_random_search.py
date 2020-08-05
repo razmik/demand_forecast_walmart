@@ -100,14 +100,14 @@ if __name__ == "__main__":
                        'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
                        'objective': 'regression',
                        'min_data_per_leaf': [80, 100, 120, 150, 180, 210, 250, 300],
-                       'min_split_gain': [0.01, 0.05, 0.1],
-                       'num_threads': 4}
+                       'min_split_gain': [0.01, 0.05, 0.1]}
 
         # training the model using 100 iterations with early stopping if validation RMSE decreases
         eval_result = {}
         start_time = time.time()
-        lgb_random = RandomizedSearchCV(estimator=lgb.LGBMRegressor(), param_distributions=grid_params, n_iter=300, cv=5, verbose=2,
+        lgb_random = RandomizedSearchCV(estimator=lgb.LGBMRegressor(), param_distributions=grid_params, n_iter=100, cv=5, verbose=2,
                                     random_state=8, n_jobs=-1)
+        lgb_random.fit(X_train, Y_train)
         end_time = time.time()
         print("Model Grid search time: {} mins.".format((end_time - start_time) / 60))
 
