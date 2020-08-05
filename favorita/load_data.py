@@ -49,8 +49,8 @@ class Data(object):
         data['onpromotion'] = data['onpromotion'].astype('int8')
 
         # Clip sales values 0-100
-        # if train_flag:
-        #     data['unit_sales'].clip(0, 100, inplace=True)
+        if train_flag:
+            data['unit_sales'].clip(0, 1000, inplace=True)
 
         return data
 
