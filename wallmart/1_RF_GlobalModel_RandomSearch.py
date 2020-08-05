@@ -8,40 +8,22 @@ Next use Grid Search to specify the optimal point
 
 """
 
-# System
-from os.path import join
-
 # Data Wrangling and Viz
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pickle
 
 # Modeling and Feature Engineering
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import mean_squared_error
+
+# Custom Files
+from Evaluation import Evaluation
 
 # Gloabl Params
 DATA_FOLDER = 'data/Walmart_data_cleaned.csv'
 PKL_MODEL_FILENAME = "model_outputs/rf_global_model.pkl"
-
-
-# Evaluation Matrices
-def evaluate(model, x_test, y_test):
-
-    predicted_values = model.predict(x_test)
-
-    weights = x_test.IsHoliday.apply(lambda x: 5 if x else 1)
-    wmae = np.round(np.sum(weights*abs(y_test-predicted_values))/(np.sum(weights)), 2)
-
-    rmse = np.sqrt(mean_squared_error(y_test, predicted_values))
-
-    print('RMSE: {}, WMAE: {}'.format(rmse, wmae))
-
-    return wmae, rmse
 
 
 if __name__ == "__main__":
@@ -98,4 +80,4 @@ if __name__ == "__main__":
         pickle_model = pickle.load(file)
 
     best_random = pickle_model.best_estimator_
-    random_accuracy = evaluate(best_random, X_test, Y_test)
+    random_accuracy = Evaluation.evaluate(best_random, X_test, Y_test)
