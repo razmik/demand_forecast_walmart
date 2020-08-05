@@ -11,8 +11,8 @@ import favorita.config as config
 
 class Data(object):
 
-    def __init__(self, data_folder, test_the_script=False):
-        self.DATA_FOLDER = data_folder
+    def __init__(self, test_the_script=False):
+        self.DATA_FOLDER = config.ROOT_FOLDER
         self.test_the_script = test_the_script
         self.read_data()
         print('Train shape: ', self.train.shape)
