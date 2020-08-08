@@ -6,6 +6,7 @@ Bootstrapped from Anton Mashikhin, 2017.
 https://www.kaggle.com/heyt0ny/read-data-for-low-memory-usage
 """
 import pandas as pd
+import numpy as np
 import favorita.config as config
 
 
@@ -23,23 +24,25 @@ class Data(object):
         if self.test_the_script:
             self.nrows = 1000
 
-        self.train = self.read_train_test_low_memory(train_flag=True)
-        self.test = self.read_train_test_low_memory(train_flag=False)
+        self.train = self.read_train_test_low_memory()
         self.stores = self.read_stores_low_memory()
         self.items = self.read_items_low_memory()
         self.weather_oil_holiday = self.read_oil_weather_holiday_low_memory()
-        self.transactions = self.read_transactions_low_memory()
+        # self.transactions = self.read_transactions_low_memory()
+        self.weather = self.read_weather_low_memory()
 
-    def read_train_test_low_memory(self, train_flag=True):
+    def read_train_test_low_memory(self):
         filename = 'train'
-        if not train_flag: filename = 'test'
 
         types = {'id': 'int64',
                  'item_nbr': 'int32',
                  'store_nbr': 'int8',
                  'unit_sales': 'float32'
                  }
-        # Skipping rows till 2016
+
+        # Skipping rows before
+        # 2016-01-01: 66458909
+        # 2017-01-01: 101688778
         data = pd.read_csv(self.DATA_FOLDER + filename + '.csv', parse_dates=['date'], dtype=types,
                            nrows=self.nrows, infer_datetime_format=True, low_memory=True, skiprows=range(1, 66458909))
 
@@ -49,8 +52,8 @@ class Data(object):
         data['onpromotion'] = data['onpromotion'].astype('int8')
 
         # Clip sales values 0-100
-        if train_flag:
-            data['unit_sales'].clip(0, 1000, inplace=True)
+        # if train_flag:
+        #     data['unit_sales'].clip(0, 1000, inplace=True)
 
         return data
 
@@ -77,6 +80,15 @@ class Data(object):
                  }
         data = pd.read_csv(self.DATA_FOLDER + 'holiday_weather_oil_combined.csv', parse_dates=['date'], dtype=types,
                            infer_datetime_format=True, low_memory=True)
+        return data
+
+    def read_weather_low_memory(self):
+        types = {'AvgTemp': 'int8',
+                 'MaxTemp': 'int8'
+                 }
+        data = pd.read_csv(self.DATA_FOLDER + 'weather.csv', parse_dates=['Date'], dtype=types,
+                           infer_datetime_format=True, low_memory=True)
+        data.rename(columns={'Date': 'date', 'location': 'city'}, inplace=True)
         return data
 
     def read_transactions_low_memory(self):

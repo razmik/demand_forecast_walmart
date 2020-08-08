@@ -11,66 +11,38 @@ import numpy as np
 from datetime import datetime
 import pickle
 import time
-import gc
 
 import lightgbm as lgb
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import RandomizedSearchCV
 import matplotlib.pyplot as plt
 
 from favorita.load_data import Data
+from favorita.feature_extractor import Features
 
 MODEL_NAME = 'base_lgb_random_search'
 OUTPUT_FOLDER = 'model_outputs/' + MODEL_NAME
-SELECTED_STORES = [i for i in range(1, 60)]
+SELECTED_STORES = [i for i in range(1, 11)]
 ONLY_EVALUATE = False
+TRAIN_TEST_SPLIT_DATE = datetime(2017, 7, 1)
 
 if __name__ == "__main__":
 
+    # Load data
     start_time = time.time()
-    data = Data()
-    end_time = time.time()
-    print("Load data in: {} mins.".format((end_time - start_time) / 60))
+    data = Data(test_the_script=True)
+    print("Load data in: {} mins.".format((time.time() - start_time) / 60))
 
     # Filter stores to reduce the dataset
     data.train = data.train.loc[data.train.store_nbr.isin(SELECTED_STORES)]
 
-    # Feature Engineering
-    data.train['month'] = data.train['date'].dt.month
-    data.train['week'] = data.train['date'].dt.week
-    data.train['day'] = data.train['date'].dt.dayofweek
+    # Compose Feature Data
+    start_time = time.time()
+    feature_extractor = Features(data, TRAIN_TEST_SPLIT_DATE)
+    print("Features Composed in: {} mins.".format((time.time() - start_time) / 60))
 
-    data.train['month'] = data.train['month'].astype('int8')
-    data.train['week'] = data.train['week'].astype('int8')
-    data.train['day'] = data.train['day'].astype('int8')
-
-    # Log transform the target variable (unit_sales)
-    data.train['unit_sales'] = data.train['unit_sales'].apply(lambda u: np.log1p(float(u)) if float(u) > 0 else 0)
-
-    # Merge tables
-    df_full = pd.merge(data.train, data.items[['item_nbr', 'perishable', 'family']],
-                       on='item_nbr')  # Train and items (perishable state)
-    df_full = pd.merge(df_full,
-                       data.weather_oil_holiday[['date', 'store_nbr', 'is_holiday', 'AvgTemp', 'dcoilwtico_imputed']],
-                       on=['date', 'store_nbr'], how='left')  # Merge weather, oil and holiday
-
-    del df_full['id']
-    df_full.rename(columns={'dcoilwtico_imputed': 'oil_price', 'AvgTemp': 'avg_temp'}, inplace=True)
-
-    # Get test train split
-    df_train = df_full[df_full['date'] < datetime(2017, 7, 1)]
-    df_test = df_full[df_full['date'] >= datetime(2017, 7, 1)]
-
-    # clean variables
-    del data
-    del df_full
-    gc.collect()
-
-    # Categorical encoding
-    enc_family = LabelEncoder()
-    df_train['family'] = enc_family.fit_transform(df_train['family'])
-    df_test['family'] = enc_family.transform(df_test['family'])
+    df_train = feature_extractor.df_train
+    df_test = feature_extractor.df_test
 
     # Modeling
     feature_columns = ['store_nbr', 'item_nbr', 'onpromotion', 'month', 'week', 'day', 'perishable', 'is_holiday',
@@ -92,20 +64,20 @@ if __name__ == "__main__":
         # Parameters
         grid_params = {'learning_rate': [0.001, 0.01, 0.1, 0.2, 0, 3],
                        'num_leaves': [50, 60, 80, 100],
-                       'metric': 'rmse',
-                       'boosting_type': ['gbdt', 'l2_root'],
+                       'metric': ['rmse'],
+                       'boosting_type': ['gbdt'],
                        'bagging_fraction': [0.8, 0.85, 0.9],
                        'max_depth': [6, 8, 10, 12],
                        'colsample_bytree': [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
                        'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-                       'objective': 'regression',
+                       'objective': ['regression'],
                        'min_data_per_leaf': [80, 100, 120, 150, 180, 210, 250, 300],
                        'min_split_gain': [0.01, 0.05, 0.1]}
 
         # training the model using 100 iterations with early stopping if validation RMSE decreases
         eval_result = {}
         start_time = time.time()
-        lgb_random = RandomizedSearchCV(estimator=lgb.LGBMRegressor(), param_distributions=grid_params, n_iter=100, cv=5, verbose=2,
+        lgb_random = RandomizedSearchCV(estimator=lgb.LGBMRegressor(), param_distributions=grid_params, n_iter=10, cv=5, verbose=2,
                                     random_state=8, n_jobs=-1)
         lgb_random.fit(X_train, Y_train)
         end_time = time.time()
@@ -146,4 +118,4 @@ if __name__ == "__main__":
     plt.xlabel("Unit Sales")
     plt.ylabel("Predicted Unit Sales")
     plt.title("Actual vs Predicted Unit Sales")
-    plt.savefig(OUTPUT_FOLDER + '.jpeg', dpi=800)
+    plt.savefig(OUTPUT_FOLDER + '.png', dpi=800)
