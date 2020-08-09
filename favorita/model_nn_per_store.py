@@ -15,12 +15,12 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LSTM
 from tensorflow.keras import optimizers
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 import matplotlib.pyplot as plt
 
 from favorita.load_data import Data
 from favorita.feature_extractor import Features
+from favorita.evaluation import Evaluator
 
 # Algorithmic and data config params
 DATA_BEGIN_INDICATOR = datetime(2017, 1, 1)
@@ -31,12 +31,15 @@ PERIODS_TO_COMBINE = 6
 PREDICT_AHEAD_DAYS = 16
 N_EPOCHS = 1000
 
-SELECTED_STORES = [i for i in range(1, 20)]
-LOG_SCALED = True
+SELECTED_STORES = [i for i in range(1, 55)]
+LOG_SCALED = False
 
 # File config
 VERSION = 1
 MODEL_NAME = 'nn_per_store'
+OUTPUT_ROOT = 'model_outputs/{}_v{}_store_wise/'.format(MODEL_NAME, VERSION)
+if not os.path.exists(OUTPUT_ROOT):
+    os.makedirs(OUTPUT_ROOT)
 
 if __name__ == "__main__":
 
@@ -52,8 +55,8 @@ if __name__ == "__main__":
         print('Store ', selected_store)
         print('===' * 50)
 
-        OUTPUT_FOLDER = 'model_outputs/{}_{}_store_{}/'.format(MODEL_NAME, VERSION, selected_store)
-        OUTPUT_FILENAME = OUTPUT_FOLDER + MODEL_NAME
+        OUTPUT_FOLDER = OUTPUT_ROOT + 'store_{}/'.format(selected_store)
+        OUTPUT_FILENAME = OUTPUT_FOLDER + MODEL_NAME + '_{}'.format(selected_store)
         FIGURE_OUTPUT_FOLDER = OUTPUT_FOLDER + 'store_predictions/'
         FIGURE_OUTPUT_FILENAME = FIGURE_OUTPUT_FOLDER + 'store'
 
@@ -134,39 +137,27 @@ if __name__ == "__main__":
 
 
         # Evaluation
-        def get_error(weights, true_val, pred_val):
-
-            err = (true_val - pred_val) ** 2
-            err = err.sum(axis=1) * weights
-            nwrmsle = np.sqrt(err.sum() / weights.sum() / PREDICT_AHEAD_DAYS)
-
-            mse = mean_squared_error(true_val, pred_val, sample_weight=weights)
-            rmse = np.sqrt(mse)
-
-            mae = mean_absolute_error(true_val, pred_val, sample_weight=weights)
-
-            return mse, rmse, nwrmsle, mae
 
         weights = df_items_2017["perishable"].values * 0.25 + 1
-
+        eval = Evaluator()
         # If log scaled, get error for both log and anti-log
         error_data = []
-        columns = ['Target unit', 'Data split', 'MSE', 'RMSE', 'NWRMSLE', 'MAE']
+        columns = ['Target unit', 'Data split', 'MSE', 'RMSE', 'NWRMSLE', 'MAE', 'MAPE']
         if LOG_SCALED:
-            mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg = get_error(weights, Y_val, np.array(val_pred).transpose()[0])
-            mse_val, rmse_val, nwrmsle_val, mae_val = get_error(weights, np.expm1(Y_val), np.clip(np.expm1(np.array(val_pred).transpose()[0]), 0, 1000))
-            error_data.append(['Log', 'Validation', mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg])
-            error_data.append(['Unit', 'Validation', mse_val, rmse_val, nwrmsle_val, mae_val])
+            mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg, mape_val_lg = eval.get_error(weights, Y_val, np.array(val_pred).transpose()[0], PREDICT_AHEAD_DAYS)
+            mse_val, rmse_val, nwrmsle_val, mae_val, mape_val = eval.get_error(weights, np.expm1(Y_val), np.clip(np.expm1(np.array(val_pred).transpose()[0]), 0, 1000), PREDICT_AHEAD_DAYS)
+            error_data.append(['Log', 'Validation', mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg, mape_val_lg])
+            error_data.append(['Unit', 'Validation', mse_val, rmse_val, nwrmsle_val, mae_val, mape_val])
 
-            mse_test_lg, rmse_test_lg, nwrmsle_test_lg, mae_test_lg = get_error(weights, Y_test, np.array(test_pred).transpose()[0])
-            mse_test, rmse_test, nwrmsle_test, mae_test = get_error(weights, np.expm1(Y_test), np.clip(np.expm1(np.array(test_pred).transpose()[0]), 0, 1000))
-            error_data.append(['Log', 'Test', mse_test_lg, rmse_test_lg, nwrmsle_test_lg, mae_test_lg])
-            error_data.append(['Unit', 'Test', mse_test, rmse_test, nwrmsle_test, mae_test])
+            mse_test_lg, rmse_test_lg, nwrmsle_test_lg, mae_test_lg, mape_test_lg = eval.get_error(weights, Y_test, np.array(test_pred).transpose()[0], PREDICT_AHEAD_DAYS)
+            mse_test, rmse_test, nwrmsle_test, mae_test, mape_test = eval.get_error(weights, np.expm1(Y_test), np.clip(np.expm1(np.array(test_pred).transpose()[0]), 0, 1000), PREDICT_AHEAD_DAYS)
+            error_data.append(['Log', 'Test', mse_test_lg, rmse_test_lg, nwrmsle_test_lg, mae_test_lg, mape_test_lg])
+            error_data.append(['Unit', 'Test', mse_test, rmse_test, nwrmsle_test, mae_test, mape_test])
         else:
-            mse_val, rmse_val, nwrmsle_val, mae_val = get_error(weights, Y_val, np.array(val_pred).transpose()[0])
-            mse_test, rmse_test, nwrmsle_test, mae_test = get_error(weights, Y_test, np.array(test_pred).transpose()[0])
-            error_data.append(['Unit', 'Validation', mse_val, rmse_val, nwrmsle_val, mae_val])
-            error_data.append(['Unit', 'Test', mse_test, rmse_test, nwrmsle_test, mae_test])
+            mse_val, rmse_val, nwrmsle_val, mae_val, mape_val = eval.get_error(weights, Y_val, np.array(val_pred).transpose()[0], PREDICT_AHEAD_DAYS)
+            mse_test, rmse_test, nwrmsle_test, mae_test, mape_test = eval.get_error(weights, Y_test, np.array(test_pred).transpose()[0], PREDICT_AHEAD_DAYS)
+            error_data.append(['Unit', 'Validation', mse_val, rmse_val, nwrmsle_val, mae_val, mape_val])
+            error_data.append(['Unit', 'Test', mse_test, rmse_test, nwrmsle_test, mae_test, mape_test])
         pd.DataFrame(error_data, columns=columns).to_csv(OUTPUT_FILENAME + '_evaluation.csv', index=False)
 
         # Model Output
@@ -212,6 +203,7 @@ if __name__ == "__main__":
         del df_test
         del df_preds
         del comb_df
+        del model
         gc.collect()
 
 

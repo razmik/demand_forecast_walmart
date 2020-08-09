@@ -74,11 +74,9 @@ class Features(object):
             (self.data.train.store_nbr.isin(self.selected_stores)) & (self.data.train.date >= data_begin_indicator)]
 
         if log_scaled:
-            self.data.train['unit_sales'] = self.data.train['unit_sales'].apply(
-                lambda u: np.log1p(float(u)) if float(u) > 0 else 0)
+            df_train['unit_sales'] = df_train['unit_sales'].apply(lambda u: np.log1p(float(u)) if float(u) > 0 else 0)
 
         # Merge datasets
-        self.data.stores['city'] = self.data.stores.city.str.lower()
         df_weather_store = pd.merge(self.data.stores[['store_nbr', 'city']],
                                     self.data.weather[['date', 'AvgTemp', 'city']], on='city')
 
@@ -187,18 +185,16 @@ class Features(object):
 
     def engineer_nn_features(self, weeks_to_combine=4, predict_periods=16, train_date=date(2017, 5, 24),
                              valid_date=date(2017, 7, 12), test_date=date(2017, 7, 31),
-                             data_begin_indicator=datetime(2017, 1, 1), log_scaled=True):
+                             data_begin_indicator=datetime(2017, 1, 1), log_scaled=True, reshape_for_dnn=True):
 
         # Filter dataset
         df_train = self.data.train.loc[
             (self.data.train.store_nbr.isin(self.selected_stores)) & (self.data.train.date >= data_begin_indicator)]
 
         if log_scaled:
-            self.data.train['unit_sales'] = self.data.train['unit_sales'].apply(
-                lambda u: np.log1p(float(u)) if float(u) > 0 else 0)
+            df_train['unit_sales'] = df_train['unit_sales'].apply(lambda u: np.log1p(float(u)) if float(u) > 0 else 0)
 
         # Merge datasets
-        self.data.stores['city'] = self.data.stores.city.str.lower()
         df_weather_store = pd.merge(self.data.stores[['store_nbr', 'city']],
                                     self.data.weather[['date', 'AvgTemp', 'city']], on='city')
 
@@ -214,17 +210,6 @@ class Features(object):
         df_train_ext.set_index(["store_nbr", "item_nbr", "date"], inplace=True)
         del df_train_ext['id']
         gc.collect()
-
-        # Encoding Stores data
-        enc_family = LabelEncoder()
-        enc_city = LabelEncoder()
-        enc_state = LabelEncoder()
-        enc_type = LabelEncoder()
-
-        self.data.items['family'] = enc_family.fit_transform(self.data.items['family'].values)
-        self.data.stores['city'] = enc_city.fit_transform(self.data.stores['city'].values)
-        self.data.stores['state'] = enc_state.fit_transform(self.data.stores['state'].values)
-        self.data.stores['type'] = enc_type.fit_transform(self.data.stores['type'].values)
 
         # Create Datasets to prep train/test data
         df_2017 = df_train.set_index(["store_nbr", "item_nbr", "date"])[["unit_sales"]].unstack(level=-1).fillna(0)
@@ -247,10 +232,22 @@ class Features(object):
                         'AvgTemp'].iloc[0]
                 df_temp_2017.loc[df_temp_2017.index.get_level_values('store_nbr') == row_store, col_date] = avg_temp
 
-        self.data.items = self.data.items.set_index('item_nbr')
-        self.data.stores = self.data.stores.set_index('store_nbr')
-        df_items_2017 = self.data.items.reindex(df_2017.index.get_level_values(1))
-        df_stores_2017 = self.data.stores.reindex(df_2017.index.get_level_values(0))
+        df_items_2017 = self.data.items.set_index('item_nbr')
+        df_items_2017 = df_items_2017.reindex(df_2017.index.get_level_values(1))
+        df_items_2017.drop(columns=['class'], inplace=True)
+
+        df_stores_2017 = self.data.stores.set_index('store_nbr')
+        df_stores_2017 = df_stores_2017.reindex(df_2017.index.get_level_values(0))
+        df_stores_2017.drop(columns=['state', 'cluster'], inplace=True)
+
+        # Encoding Stores data
+        enc_family = LabelEncoder()
+        enc_city = LabelEncoder()
+        enc_type = LabelEncoder()
+
+        df_items_2017['family'] = enc_family.fit_transform(df_items_2017['family'].values)
+        df_stores_2017['city'] = enc_city.fit_transform(df_stores_2017['city'].values)
+        df_stores_2017['type'] = enc_type.fit_transform(df_stores_2017['type'].values)
 
         def get_timespan(df, dt, minus, periods, freq='D'):
             return df[pd.date_range(dt - timedelta(days=minus), periods=periods, freq=freq)]
@@ -313,18 +310,20 @@ class Features(object):
         del X_l, y_l
         gc.collect()
 
-        scaler = StandardScaler()
-        scaler.fit(pd.concat([X_train, X_val, X_test]))
-        X_train[:] = scaler.transform(X_train)
-        X_val[:] = scaler.transform(X_val)
-        X_test[:] = scaler.transform(X_test)
+        if reshape_for_dnn:
 
-        X_train = X_train.values
-        X_test = X_test.values
-        X_val = X_val.values
-        X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
-        X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
-        X_val = X_val.reshape((X_val.shape[0], 1, X_val.shape[1]))
+            scaler = StandardScaler()
+            scaler.fit(pd.concat([X_train, X_val, X_test]))
+            X_train[:] = scaler.transform(X_train)
+            X_val[:] = scaler.transform(X_val)
+            X_test[:] = scaler.transform(X_test)
+
+            X_train = X_train.values
+            X_test = X_test.values
+            X_val = X_val.values
+            X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
+            X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
+            X_val = X_val.reshape((X_val.shape[0], 1, X_val.shape[1]))
 
         out_dict = {
             'train': (X_train, y_train),

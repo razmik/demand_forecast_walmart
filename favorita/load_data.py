@@ -62,6 +62,9 @@ class Data(object):
                  'store_nbr': 'int8',
                  }
         data = pd.read_csv(self.DATA_FOLDER + 'stores.csv', dtype=types, low_memory=True)
+
+        data['city'] = data.city.str.lower()
+
         return data
 
     def read_items_low_memory(self):

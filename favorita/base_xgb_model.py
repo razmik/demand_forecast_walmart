@@ -6,22 +6,21 @@ Date: 05-Aug-20 at 4:53 PM
 import pandas as pd
 import numpy as np
 from datetime import datetime
-import pickle
 import time
 import gc
 
 from xgboost import XGBRegressor
 from xgboost import Booster
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 
 from favorita.load_data import Data
+from favorita.evaluation import Evaluator
 
 
 MODEL_NAME = 'base_xgb'
 OUTPUT_FOLDER = 'model_outputs/' + MODEL_NAME
-SELECTED_STORES = [i for i in range(1, 5)]
-ONLY_EVALUATE = True
+SELECTED_STORES = [i for i in range(1, 55)]
+ONLY_EVALUATE = False
 
 
 if __name__ == "__main__":
@@ -57,8 +56,9 @@ if __name__ == "__main__":
     df_full.rename(columns={'dcoilwtico_imputed': 'oil_price', 'AvgTemp': 'avg_temp'}, inplace=True)
 
     # Get test train split
-    df_train = df_full[df_full['date'] < datetime(2017, 7, 1)]
-    df_test = df_full[df_full['date'] >= datetime(2017, 7, 1)]
+    df_train = df_full[(df_full['date'] > datetime(2017, 1, 1)) & (df_full['date'] < datetime(2017, 7, 12))]
+    df_valid = df_full[(df_full['date'] >= datetime(2017, 7, 12)) & (df_full['date'] < datetime(2017, 7, 31))]
+    df_test = df_full[df_full['date'] >= datetime(2017, 7, 31)]
 
     # clean variables
     del data
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     target_column = ['unit_sales']
 
     X_train, Y_train = df_train[feature_columns], df_train[target_column]
+    X_valid, Y_valid = df_valid[feature_columns], df_valid[target_column]
     X_test, Y_test = df_test[feature_columns], df_test[target_column]
     print('Training dataset: {}'.format(X_train.shape))
     print('Testing dataset: {}'.format(X_test.shape))
@@ -80,7 +81,7 @@ if __name__ == "__main__":
         # Default XGB
         model_xgr_1 = XGBRegressor()
         start_time = time.time()
-        model_xgr_1.fit(X_train, Y_train)
+        model_xgr_1.fit(X_valid, Y_valid)
         end_time = time.time()
         print("Model Train time: {} mins.".format((end_time - start_time) / 60))
 
@@ -98,16 +99,22 @@ if __name__ == "__main__":
     Y_test_antilog = np.expm1(Y_test)
 
     # Evaluation
-    mse = mean_squared_error(Y_test_antilog, Y_pred_antilog)
-    mae = mean_absolute_error(Y_test_antilog, Y_pred_antilog)
-    rmse = np.sqrt(mse)
-    print('RMSE: {}\nMSE: {}\nMAE: {}'.format(rmse, mse, mae))
+    weights = X_test["perishable"].values * 0.25 + 1
+    eval = Evaluator()
+    error_data = []
+    columns = ['Target unit', 'Data split', 'MSE', 'RMSE', 'NWRMSLE', 'MAE', 'MAPE']
+    mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg, mape_val_lg = eval.get_error(weights, Y_test, Y_pred, 1)
+    mse_val, rmse_val, nwrmsle_val, mae_val, mape_val = eval.get_error(weights, Y_test_antilog, Y_pred_antilog, 1)
+    error_data.append(['Log', 'Test', mse_val_lg, rmse_val_lg, nwrmsle_val_lg, mae_val_lg, mape_val_lg])
+    error_data.append(['Unit', 'Test', mse_val, rmse_val, nwrmsle_val, mae_val, mape_val])
+    pd.DataFrame(error_data, columns=columns).to_csv(OUTPUT_FOLDER + '_evaluation.csv', index=False)
+
 
     # Visualize
-    plt.figure()
-
-    plt.scatter(Y_test_antilog, Y_pred_antilog, color='blue')
-    plt.xlabel("Unit Sales")
-    plt.ylabel("Predicted Unit Sales")
-    plt.title("Actual vs Predicted Unit Sales")
-    plt.show()
+    # plt.figure()
+    #
+    # plt.scatter(Y_test_antilog, Y_pred_antilog, color='blue')
+    # plt.xlabel("Unit Sales")
+    # plt.ylabel("Predicted Unit Sales")
+    # plt.title("Actual vs Predicted Unit Sales")
+    # plt.show()
