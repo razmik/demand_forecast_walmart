@@ -4,7 +4,22 @@ This repository contains the codebase to reproduce the sales forecasting challen
 
 ## Corporación Favorita Grocery Sales Forecasting
 
-The challenge is presented in [this Kaggle page](https://www.kaggle.com/c/favorita-grocery-sales-forecasting/overview/evaluation). A description of the codebase with respect to analytics lifecycle as follows:
+The challenge is presented in [this Kaggle page](https://www.kaggle.com/c/favorita-grocery-sales-forecasting/overview/evaluation). A description of the codebase with respect to analytics lifecycle below.  
+
+### Required packages.
+
+* python 3.X (Tested with 3.7)
+* pandas
+* numpy
+* scipy
+* scikit-learn
+* lightgbm
+* tqdm
+* matplotlib
+* squarify
+* tensorflow 2.x
+
+### Codebase for analytics lifecycle
 
 1. Obtaining environmental data.  
 Weather data was collected from the [World Weather Online API](https://www.worldweatheronline.com/developer/) to enrich the Kaggle dataset. The scrpit to access the API can be found from `favorita/Get_Temperature_Data.ipynb`.  
