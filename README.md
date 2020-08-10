@@ -22,7 +22,8 @@ The challenge is presented in [this Kaggle page](https://www.kaggle.com/c/favori
 ### Codebase for analytics lifecycle
 
 1. Obtaining environmental data.  
-Weather data was collected from the [World Weather Online API](https://www.worldweatheronline.com/developer/) to enrich the Kaggle dataset. The scrpit to access the API can be found from `favorita/Get_Temperature_Data.ipynb`.  
+Weather data was collected from the [World Weather Online API](https://www.worldweatheronline.com/developer/) to enrich the Kaggle dataset. The scrpit to access the API can be found from `favorita/Get_Temperature_Data.ipynb`.   
+You can download the acquired weather data from [this Google drive link](https://drive.google.com/drive/folders/1MleN7hxFGAq0fVAlmoVRcA8_icIsCU-b?usp=sharing). 
 
 2. Data preparation.  
 Basic pre-processing steps can be found from the first half of the Jupyter notebook at `favorita/1_EDA_Cleaning.ipynb`.  
