@@ -37,6 +37,7 @@ Prior to the model development, a prototyping was conducted for LGBM and DNN usi
 Script to load data: `favorita/load_data.py`  
 Script to engineer features: `favorita/feature_extractor.py`  
 Script to evaluate: `favorita/evaluation.py`  
+!Important: Please create a config.py file in your environment indicating the root folder for the dataset.  
 
 6. Hyper-parameter search.  
 Random Search and Grid Search scripts for LGBM can be found at `favorita/base_lgb_model_random_search.py`.  
