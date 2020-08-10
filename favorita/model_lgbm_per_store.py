@@ -27,11 +27,11 @@ TEST_DATE = date(2017, 7, 31)
 PERIODS_TO_COMBINE = 6
 PREDICT_AHEAD_DAYS = 16
 
-SELECTED_STORES = [i for i in range(53, 55)]
-LOG_SCALED = False
+SELECTED_STORES = [i for i in range(1, 55)]
+LOG_SCALED = True
 
 # File config
-VERSION = 1
+VERSION = 2
 MODEL_NAME = 'lgbm_per_store'
 OUTPUT_ROOT = 'model_outputs/{}_v{}_store_wise/'.format(MODEL_NAME, VERSION)
 if not os.path.exists(OUTPUT_ROOT):
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Loop through each store to develop a store wise model
     for selected_store in SELECTED_STORES:
 
-        print('\n\n\n===' * 50)
+        print('===' * 50)
         print('Store ', selected_store)
         print('===' * 50)
 
@@ -63,11 +63,15 @@ if __name__ == "__main__":
 
         # Compose Feature Data
         print('Extracting Features...')
-        start_time = time.time()
-        fe = Features(data, selected_stores=[selected_store])
-        feature_dictionary = fe.engineer_advanced_features(
-            weeks_to_combine=PERIODS_TO_COMBINE, predict_periods=PREDICT_AHEAD_DAYS, train_date=TRAIN_DATE,
-            valid_date=VALIDATE_DATE, test_date=TEST_DATE, log_scaled=LOG_SCALED, data_begin_indicator=DATA_BEGIN_INDICATOR)
+        try:
+            start_time = time.time()
+            fe = Features(data, selected_stores=[selected_store])
+            feature_dictionary = fe.engineer_advanced_features(
+                weeks_to_combine=PERIODS_TO_COMBINE, predict_periods=PREDICT_AHEAD_DAYS, train_date=TRAIN_DATE,
+                valid_date=VALIDATE_DATE, test_date=TEST_DATE, log_scaled=LOG_SCALED, data_begin_indicator=DATA_BEGIN_INDICATOR)
+        except:
+            print('ERROR IN STORE {}'.format(selected_store))
+            continue
         print("Features Composed in: {} mins.".format((time.time() - start_time) / 60))
 
         X_train, Y_train = feature_dictionary['train']
