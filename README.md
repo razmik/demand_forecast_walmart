@@ -41,11 +41,11 @@ Script to evaluate: `favorita/evaluation.py`
 6. Hyper-parameter search.  
 Random Search and Grid Search scripts for LGBM can be found at `favorita/base_lgb_model_random_search.py`.  
 
-7. Predictive models (general model for all stores).
+7. Predictive models (general model for all stores).  
 Script for LGBM: `favorita/model_lgbm.py`  
 Script for DNN: `favorita/model_nn.py`   
 
-8. Predictive models (per store model).
+8. Predictive models (per store model).  
 Script for LGBM: `favorita/model_lgbm_per_store.py`  
 Script for DNN: `favorita/model_nn_per_store.py`   
 

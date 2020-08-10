@@ -2,8 +2,7 @@
 Author: Rashmika Nawaratne
 Date: 08-Aug-20 at 12:45 PM
 
-Bootstrapped from Weiwei - Kaggle notebook.
-https://www.kaggle.com/shixw125/1st-place-nn-model-public-0-507-private-0-513
+Bootstrapped from Andy Harless starter script.
 """
 import pandas as pd
 import numpy as np
@@ -17,7 +16,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LSTM
 from tensorflow.keras import optimizers
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 import matplotlib.pyplot as plt
 
