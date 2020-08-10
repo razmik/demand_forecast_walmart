@@ -28,10 +28,10 @@ def get_accuracy_df(filename):
 
 if __name__ == "__main__":
 
-    lgbm_df = get_accuracy_df(LGBM_ROOT)
-    # nn_df = get_accuracy_df(NN_ROOT)
+    # lgbm_df = get_accuracy_df(LGBM_ROOT)
+    nn_df = get_accuracy_df(NN_ROOT)
 
-    # print(nn_df.mse.mean(), nn_df.rmse.mean(), nn_df.mae.mean())
-    print(lgbm_df.mse.mean(), lgbm_df.rmse.mean(), lgbm_df.mae.mean(), lgbm_df.NWRMSLE.mean())
+    print(nn_df.mse.mean(), nn_df.rmse.mean(), nn_df.mae.mean(), nn_df.NWRMSLE.mean())
+    # print(lgbm_df.mse.mean(), lgbm_df.rmse.mean(), lgbm_df.mae.mean(), lgbm_df.NWRMSLE.mean())
 
     print('test')
